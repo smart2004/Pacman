@@ -848,31 +848,39 @@ class Game:
         pygame.display.flip()
 
     def draw_pacman(self, offset, skin):
-        px = self.pacman.x*TILE_SIZE + offset[0] + TILE_SIZE//2
-        py = self.pacman.y*TILE_SIZE + HUD_HEIGHT + offset[1] + TILE_SIZE//2
-        r = TILE_SIZE//2 - 2
+        px = self.pacman.x * TILE_SIZE + offset[0] + TILE_SIZE // 2
+        py = self.pacman.y * TILE_SIZE + HUD_HEIGHT + offset[1] + TILE_SIZE // 2
+        r = TILE_SIZE // 2 - 2
         color = skin["pac"]
 
-        # рот
-        mouth_angle = math.radians(45 * self.pacman.mouth_open)
+    # Направление (по умолчанию смотрим вправо)
         d = self.pacman.dir if self.pacman.dir != (0, 0) else (1, 0)
-        base_angle = math.atan2(-d[1], d[0])
+        base_angle = math.atan2(-d[1], d[0])  # в экранных координатах Y вниз -> минус
 
+    # Угол раскрытия рта (0..1 -> 0..45°)
+        mouth_angle = math.radians(45 * self.pacman.mouth_open)
+
+    # Закрашиваем БОЛЬШУЮ дугу: от края рта (base+mouth) вокруг
+    # до второго края рта (base-mouth), идём в положительном направлении
+    # (по часовой стрелке в экранных координатах).
         start = base_angle + mouth_angle
-        end = base_angle - mouth_angle
-        # рисуем как "пирог"
+    # total_arc = 2π - ширина рта
+        arc = (2 * math.pi) - 2 * mouth_angle
+
+    # Строим полигон: центр + точки по дуге
         points = [(px, py)]
-        steps = 24
-        for i in range(steps+1):
-            a = start + (end - start) * (i/steps)
-            points.append((px + math.cos(a)*r, py + math.sin(a)*r))
-        if len(points) > 2:
-            pygame.draw.polygon(self.screen, color, points)
-        else:
-            pygame.draw.circle(self.screen, color, (px, py), r)
-        # глаз
-        eye_x = px + math.cos(base_angle + math.pi/2)*r*0.3 - d[0]*2
-        eye_y = py + math.sin(base_angle + math.pi/2)*r*0.3 - d[1]*2
+        steps = 40
+        for i in range(steps + 1):
+            a = start + arc * (i / steps)
+            points.append((px + math.cos(a) * r, py + math.sin(a) * r))
+
+        pygame.draw.polygon(self.screen, color, points)
+
+    # Глаз
+        eye_offset_angle = base_angle + math.pi / 2   # перпендикуляр к движению
+        eye_dist = r * 0.45
+        eye_x = px + math.cos(eye_offset_angle) * eye_dist + d[0] * 2
+        eye_y = py + math.sin(eye_offset_angle) * eye_dist + d[1] * 2
         pygame.draw.circle(self.screen, BLACK, (int(eye_x), int(eye_y)), 2)
 
     def draw_ghost(self, g, offset):
